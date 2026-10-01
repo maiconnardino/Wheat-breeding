@@ -13,6 +13,7 @@ Target journal: *Remote Sensing Applications: Society and Environment* (RSASE).
 - `results/cross_experiment_spearman.csv` — Spearman rank correlations calculated from the final held-out-domain predictions.
 - `results/longitudinal_xgboost_fixed_metrics.csv` — longitudinal XGBoost results after freezing the model specification for the RSASE revision.
 - `results/earliest_useful_xgboost_fixed.csv` — earliest-useful-window results for the frozen XGBoost specification.
+- `results/E1_GY_F6_F10_xgboost_fixed_sensitivity.csv` — descriptive F6-versus-F10 selection sensitivity for the frozen XGBoost specification.
 
 ## Experimental domains
 
@@ -61,6 +62,6 @@ That paper addressed longitudinal repeatability, trait relationships, and indire
 
 ## Reproducibility note
 
-The Python workflow is the production reference for the RSASE revision. The previous CEA folder is retained only as an archive of the earlier submission-stage workflow.
+The Python workflow is the production reference for the RSASE revision. The previous CEA folder is retained only as an archive of the earlier submission-stage workflow. The manuscript Data and Code Availability statement should cite this RSASE folder as the active public repository.
 
 Corresponding author: **Maicon Nardino**, Federal University of Viçosa, Brazil.
