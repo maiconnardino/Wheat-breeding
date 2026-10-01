@@ -204,6 +204,56 @@ def fixed_longitudinal_xgb(
     return pd.DataFrame(split_rows), regression_metrics(oof.truth.to_numpy(), oof.pred.to_numpy())
 
 
+def make_longitudinal_split_membership(
+    d: pd.DataFrame,
+    stage: str,
+    trait: str,
+    max_flight: int,
+) -> pd.DataFrame:
+    """Recreate the repeated-fourfold split membership used in the audited longitudinal analysis."""
+    dat = d.loc[d.Stage.eq(stage)].copy().reset_index(drop=True)
+    rkf = RepeatedKFold(n_splits=4, n_repeats=3, random_state=SEED + max_flight)
+    rows = []
+    for split_id, (_, test_idx) in enumerate(rkf.split(dat), start=1):
+        for gen in dat.iloc[test_idx]["GEN"]:
+            rows.append({
+                "Stage": stage,
+                "Trait": trait,
+                "flight_max": max_flight,
+                "split_id": split_id,
+                "GEN": gen,
+            })
+    return pd.DataFrame(rows)
+
+
+def run_all_frozen_longitudinal_xgb(d: pd.DataFrame) -> pd.DataFrame:
+    """Run the frozen XGBoost model for all experiments, traits, and cumulative windows."""
+    rows = []
+    for stage in ["E1", "E2", "E3", "E4"]:
+        for trait in ["DH", "GY"]:
+            for max_flight in range(1, 11):
+                membership = make_longitudinal_split_membership(d, stage, trait, max_flight)
+                split_pred, metrics = fixed_longitudinal_xgb(
+                    d=d,
+                    stage=stage,
+                    trait=trait,
+                    max_flight=max_flight,
+                    split_membership=membership,
+                )
+                rows.append({
+                    "Stage": stage,
+                    "Trait": trait,
+                    "flight_max": max_flight,
+                    "n": int(d.Stage.eq(stage).sum()),
+                    "r": metrics["Pearson_r"],
+                    "Spearman_rho": metrics["Spearman_rho"],
+                    "R2": metrics["R2"],
+                    "RMSE": metrics["RMSE"],
+                    "MAE": metrics["MAE"],
+                })
+    return pd.DataFrame(rows)
+
+
 def top_k_summary(truth: pd.Series, pred: pd.Series, q: float) -> dict:
     k = int(math.ceil(len(truth) * q))
     obs = set(truth.nlargest(k).index)
@@ -224,8 +274,14 @@ if __name__ == "__main__":
     print("Frozen longitudinal XGBoost parameters:")
     for k, v in XGB_LONGITUDINAL_PARAMS.items():
         print(f"  {k} = {v}")
+
+    # Reproduce the frozen longitudinal XGBoost trajectory used in the RSASE revision.
+    longitudinal_xgb = run_all_frozen_longitudinal_xgb(d)
+    longitudinal_xgb.to_csv(OUT / "longitudinal_xgboost_fixed_metrics.csv", index=False)
+
     print(
-        "\nCross-experiment Spearman rho is calculated from the final held-out-domain "
-        "prediction files so that ranking transfer is reported separately from Pearson r "
-        "and absolute calibration."
+        "\nCross-experiment Spearman rho in the submitted revision was calculated from "
+        "the archived final held-out-domain predictions. The resulting summary is stored "
+        "in results/cross_experiment_spearman.csv so ranking transfer is reported "
+        "separately from Pearson r and absolute calibration."
     )
